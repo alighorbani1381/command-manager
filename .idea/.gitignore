@@ -1,0 +1,11 @@
+*.pb
+*.xml
+build
+composer.lock
+docs
+vendor
+coverage
+.idea
+phpunit
+.phpunit.result.cache
+phpunit.xml
