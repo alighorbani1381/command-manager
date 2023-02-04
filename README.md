@@ -17,7 +17,7 @@ php artisan migrate
 ```
 You may also publish config file:
 ``` bash
-php artisan vendor:publish --provider="AliGhorbani\CommandManager\CommandManagerServiceProvider"
+php artisan vendor:publish --provider="Alighorbani\CommandManager\CommandManagerServiceProvider"
 ```
 After running above command you can find file in your config folder command-manager.php
 

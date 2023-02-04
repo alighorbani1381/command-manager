@@ -51,7 +51,7 @@ class CommandManagerStatus extends Command
                 $commandRanBefore->command,
                 $commandRanBefore->signature,
                 $commandRanBefore->version,
-                $commandRanBefore->maintenance_mode ? 'Yes' : 'No',
+                $commandRanBefore->maintenance_mode == 'On' ? 'Yes' : 'No',
                 sprintf("Ran %s", $commandRanBefore->status),
             ];
         }
