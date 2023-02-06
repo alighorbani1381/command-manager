@@ -6,7 +6,7 @@ final class MaintenanceMode
 {
     public static function turn($mode)
     {
-        $maintenanceModeOn = config('maintenance-mode.' . $mode);
+        $maintenanceModeOn = config('command-manager.maintenance-mode.' . $mode);
 
         if (is_callable($maintenanceModeOn)) {
             return $maintenanceModeOn();
