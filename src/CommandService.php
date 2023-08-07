@@ -38,7 +38,7 @@ trait CommandService
             }
 
             // sure type of commands is automatic command
-            if (!in_array(AutomaticCommand::class, (array)get_parent_class($command))) {
+            if (!in_array(AutomaticCommand::class, (array)class_parents($command))) {
                 throw new NotAutomaticCommandException($command);
             }
 
