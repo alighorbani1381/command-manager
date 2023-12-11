@@ -15,6 +15,8 @@ use Alighorbani\CommandManager\Exceptions\NotAutomaticCommandException;
  */
 trait CommandService
 {
+    const COMMAND_SIGNATURE_INDEX = 0;
+
     /**
      * Read all the automated command list and validating them
      * @throws BadCommandCallException
@@ -30,7 +32,7 @@ trait CommandService
         foreach ($commands as $command) {
             $reflection = new ReflectionClass($command);
             $defaultPropertiesValue = $reflection->getDefaultProperties();
-            $signature = $defaultPropertiesValue['signature'];
+            $signature = $this->getSignatureWithoutArguments($defaultPropertiesValue['signature']);
 
             // sure command registered in the laravel kernel
             if (!array_key_exists($signature, Artisan::all())) {
@@ -53,6 +55,18 @@ trait CommandService
         $this->automaticCommands = $automaticCommands;
 
         return $this;
+    }
+
+
+    protected function getSignatureWithoutArguments(string $signature): string
+    {
+        if (!str_contains($signature, '{')) {
+            return $signature;
+        }
+
+        $segments = explode(" ", $signature);
+
+        return $segments[self::COMMAND_SIGNATURE_INDEX];
     }
 
     protected function detectCommandsMustRun(): static
