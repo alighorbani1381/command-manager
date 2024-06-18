@@ -2,6 +2,9 @@
 
 namespace Alighorbani\CommandManager\Console;
 
+use Alighorbani\CommandManager\Exceptions\BadCommandCallException;
+use Alighorbani\CommandManager\Exceptions\NotAutomaticCommandException;
+use ReflectionException;
 use Throwable;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -16,10 +19,17 @@ class CommandManagerRunner extends Command
 {
     use CommandService;
 
+    public array $commandInQueue;
     protected $signature = 'command_manager:execute';
 
     protected $description = "Run automatically commands that registered in command manager";
 
+    /**
+     * @throws Throwable
+     * @throws NotAutomaticCommandException
+     * @throws ReflectionException
+     * @throws BadCommandCallException
+     */
     public function handle()
     {
         // sure command manager is on
@@ -38,7 +48,7 @@ class CommandManagerRunner extends Command
      * Running Commands in Pending Status
      * @throws Throwable
      */
-    public function runDetectedCommands()
+    public function runDetectedCommands(): void
     {
         if (count($this->commandInQueue) == 0) {
             $this->info('Nothing to Run...');
@@ -57,7 +67,7 @@ class CommandManagerRunner extends Command
         $chain->update(['finished_at' => Carbon::now()]);
     }
 
-    private function runCommandWithExceptionHandling($commandInQueue)
+    private function runCommandWithExceptionHandling($commandInQueue): void
     {
         if ($commandInQueue['maintenance-mode']) {
             MaintenanceMode::on();

@@ -17,6 +17,8 @@ trait CommandService
 {
     const COMMAND_SIGNATURE_INDEX = 0;
 
+    public array $automaticCommands = [];
+
     /**
      * Read all the automated command list and validating them
      * @throws BadCommandCallException
