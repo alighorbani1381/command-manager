@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->enum('maintenance_mode', ['On', 'Off']);
             $table->integer('chain_id');
             $table->float('execution_time')->nullable();
-            $table->enum('status', ['InProgress', 'Successful', 'Failed']);
+            $table->enum('status', ['Queued', 'InProgress', 'Successful', 'Failed']);
             $table->timestamp('started_at');
             $table->timestamp('finished_at')->nullable();
         });

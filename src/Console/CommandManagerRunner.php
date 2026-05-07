@@ -13,6 +13,7 @@ use Alighorbani\CommandManager\CommandService;
 use Alighorbani\CommandManager\MaintenanceMode;
 use Alighorbani\CommandManager\Models\ArtisanCommand;
 use Alighorbani\CommandManager\Models\ArtisanCommandChain;
+use Alighorbani\CommandManager\Jobs\RunArtisanCommandJob;
 use Alighorbani\CommandManager\Exceptions\CustomExceptionHandler;
 
 class CommandManagerRunner extends Command
@@ -68,6 +69,66 @@ class CommandManagerRunner extends Command
     }
 
     private function runCommandWithExceptionHandling($commandInQueue): void
+    {
+        if ($commandInQueue['run-in-queue'] ?? true) {
+            $this->dispatchCommandJob($commandInQueue);
+            return;
+        }
+
+        $this->runCommandInline($commandInQueue);
+    }
+
+    private function dispatchCommandJob(array $commandInQueue): void
+    {
+        $signature = $commandInQueue['signature'];
+
+        // Queued: row exists so the next deploy doesn't re-dispatch the same
+        // command, but it isn't running yet. The job flips this to
+        // InProgress when a worker actually picks it up.
+        $commandLog = ArtisanCommand::query()->create([
+            'command' => $commandInQueue['class'],
+            'signature' => $signature,
+            'chain_id' => $commandInQueue['chain_id'],
+            'maintenance_mode' => $commandInQueue['maintenance-mode'] ? "On" : "Off",
+            'status' => 'Queued',
+            'version' => $commandInQueue['version'],
+            'started_at' => Carbon::now(),
+        ]);
+
+        $configDelay = (int) config('command-manager.dispatch_delay_seconds', 0);
+        $commandDelay = (int) ($commandInQueue['delay'] ?? 0);
+        $delay = max($configDelay, $commandDelay);
+
+        $job = new RunArtisanCommandJob(
+            commandClass: $commandInQueue['class'],
+            signature: $signature,
+            maintenanceMode: (bool) $commandInQueue['maintenance-mode'],
+            logId: (int) $commandLog->id,
+        );
+
+        if ($connection = config('command-manager.connection')) {
+            $job->onConnection($connection);
+        }
+
+        if ($queue = config('command-manager.queue')) {
+            $job->onQueue($queue);
+        }
+
+        if ($delay > 0) {
+            $job->delay(now()->addSeconds($delay));
+        }
+
+        dispatch($job);
+
+        $this->info(sprintf(
+            'Dispatched: %s%s',
+            $signature,
+            $delay > 0 ? " (delay {$delay}s)" : ''
+        ));
+        $this->newLine();
+    }
+
+    private function runCommandInline(array $commandInQueue): void
     {
         if ($commandInQueue['maintenance-mode']) {
             MaintenanceMode::on();

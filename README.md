@@ -123,9 +123,89 @@ if you need to reset your command manager (remove all the history of running com
 ---
 
 ### 💡 Automatic Command Features
-In this version of package we have 2 simple feature that allows you to manage command with more control.
+In this version of package we have these features that allow you to manage commands with more control.
+- Queue mode (default)
+- Per-command delay
 - Maintenance mode
 - Versioning
+
+---
+
+### 🚀 Queue Mode (default) and Faster Deploys
+
+By default, every automatic command is **dispatched as a queued job** instead of being run inline inside the deploy container. This makes deploys finish fast — `command_manager:execute` just dispatches the jobs and returns. The actual work runs on your queue workers.
+
+If you want a command to run synchronously inside the deploy container (the old behavior), set `runInQueue` to `false` on it:
+
+``` php
+class MyCommand extends AutomaticCommand
+{
+    protected $signature = 'my:command';
+
+    protected bool $runInQueue = false; // 👈️ run inline, not queued
+
+    protected function handle()
+    {
+        // ...
+    }
+}
+```
+
+#### Per-command delay
+
+You can also delay a single command before its job becomes available on the queue:
+
+``` php
+class MyCommand extends AutomaticCommand
+{
+    protected $signature = 'my:command';
+
+    protected int $delay = 30; // seconds
+
+    protected function handle()
+    {
+        // ...
+    }
+}
+```
+
+#### ⚠️ Platform race condition (Laravel Cloud, etc.)
+
+On platforms like **Laravel Cloud**, the deploy container is on the new release **before** the queue worker fleet has rolled over to the new release image. If `command_manager:execute` dispatches a job for a brand-new command during that window, an old worker can pick it up and crash with `Class not found`.
+
+This package guards against that in two ways:
+
+1. **Dispatch delay** — set `COMMAND_MANAGER_DISPATCH_DELAY` (e.g. `60`–`120`) so dispatched jobs are only available *after* the worker rollout window.
+2. **Stale-worker guard** — if a stale worker still picks up the job, the job detects that the command class isn't loaded yet and releases itself back to the queue. It retries up to `COMMAND_MANAGER_JOB_TRIES` times, waiting `COMMAND_MANAGER_RELEASE_SECONDS` between attempts.
+
+Recommended `.env` on cloud platforms:
+
+```
+COMMAND_MANAGER_DISPATCH_DELAY=60
+COMMAND_MANAGER_RELEASE_SECONDS=60
+COMMAND_MANAGER_JOB_TRIES=10
+COMMAND_MANAGER_QUEUE=default
+COMMAND_MANAGER_QUEUE_CONNECTION=redis
+```
+
+On a normal single-server setup you can leave `COMMAND_MANAGER_DISPATCH_DELAY=0`.
+
+#### Command status lifecycle
+
+When a command runs through the queue, its row in `artisan_commands` walks through these states:
+
+| Status       | When                                                                                             |
+|--------------|--------------------------------------------------------------------------------------------------|
+| `Queued`     | Just dispatched, sitting in the queue (possibly delayed).                                        |
+| `InProgress` | A worker has picked the job up and is running it.                                                |
+| `Successful` | The command finished without error.                                                              |
+| `Failed`     | The command threw, **or** all retries were exhausted (handled by the job's `failed()` callback). |
+
+`command_manager:status` shows `Queued (waiting)` and `Running` for the in-flight states so you can tell them apart from finished runs.
+
+> ⚠️ Upgrade note: this version adds a new `Queued` value to the `status` enum. After upgrading run `php artisan migrate` to apply the schema change. On non-MySQL databases the migration converts `status` to a string column (requires `doctrine/dbal` on Laravel ≤ 9).
+
+---
 
 ### 😴💻️ Maintenance mode
 Sometimes we have a command that will be applied special changes that need to turn off any database modification operation (INSERT, UPDATE, DELETE) and for this reason we must put system in Maintenance mode that we define in our system.

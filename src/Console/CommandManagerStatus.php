@@ -52,7 +52,7 @@ class CommandManagerStatus extends Command
                 $commandRanBefore->signature,
                 $commandRanBefore->version,
                 $commandRanBefore->maintenance_mode == 'On' ? 'Yes' : 'No',
-                sprintf("Ran %s", $commandRanBefore->status),
+                $this->formatStatus($commandRanBefore->status),
             ];
         }
 
@@ -77,5 +77,14 @@ class CommandManagerStatus extends Command
     private function getPendingFormat($value): string
     {
         return sprintf("<fg=yellow;options=bold>%s</>", $value);
+    }
+
+    private function formatStatus(string $status): string
+    {
+        return match ($status) {
+            'Queued' => sprintf("<fg=yellow;options=bold>%s</>", 'Queued (waiting)'),
+            'InProgress' => sprintf("<fg=cyan;options=bold>%s</>", 'Running'),
+            default => sprintf("Ran %s", $status),
+        };
     }
 }

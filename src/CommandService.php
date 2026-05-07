@@ -50,6 +50,8 @@ trait CommandService
                 'class' => $command,
                 'version' => $defaultPropertiesValue['version'],
                 'maintenance-mode' => $defaultPropertiesValue['maintenanceMode'],
+                'run-in-queue' => $defaultPropertiesValue['runInQueue'] ?? true,
+                'delay' => (int) ($defaultPropertiesValue['delay'] ?? 0),
                 'signature' => $signature
             ];
         }
